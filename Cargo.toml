@@ -1,0 +1,9 @@
+[package]
+name = "wasmer-examples"
+version = "0.0.1"
+
+[dev-dependencies]
+wasmer = { version = "2.3.0", default-features = false, features = ["default-singlepass", "default-universal", "wat"] }
+nix = "0.25"
+libc = "0.2"
+page_size = "0.4.2"
