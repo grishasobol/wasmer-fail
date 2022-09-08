@@ -6,7 +6,7 @@ mod mod_test {
 
     use self::libc::{c_void, siginfo_t};
     use self::nix::sys::signal::{self, SigHandler};
-    use self::wasmer::{imports, Instance, Memory, MemoryType, Module};
+    use self::wasmer::{imports, Instance, Module};
 
     static mut MEM: *mut c_void = core::ptr::null_mut();
     static mut MEM_SIZE: usize = 0;
@@ -65,11 +65,5 @@ mod mod_test {
         let init = instance.exports.get_function("init").unwrap();
         let result = init.call(&[]);
         println!("{:?}", result);
-
-        // let import_object = imports! {
-        //     // "env" => {
-        //     //     "memory" => memory,
-        //     // }
-        // };
     }
 }
