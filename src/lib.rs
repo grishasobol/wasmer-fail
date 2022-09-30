@@ -13,7 +13,7 @@ fn test_i32() {
 
     let module_wat = r#"
     (module
-        (func $init (export "init") (param i32) (result i32)
+        (func $popcnt (export "popcnt") (param i32) (result i32)
             local.get 0
             i32.popcnt
         )
@@ -24,11 +24,11 @@ fn test_i32() {
     let module = Module::new(&store, &module_wat).unwrap();
     let instance = Instance::new(&module, &import_object).unwrap();
 
-    let init = instance.exports.get_function("init").unwrap();
+    let popcnt = instance.exports.get_function("popcnt").unwrap();
 
     let mut num = 1;
     for _ in 1..10000 {
-        let result = init.call(&[Value::I32(num)]).unwrap();
+        let result = popcnt.call(&[Value::I32(num)]).unwrap();
         assert_eq!(&Value::I32(num.count_ones() as i32), result.get(0).unwrap());
         num = get_next_number_i32(num);
     }
@@ -47,7 +47,7 @@ fn test_i64() {
 
     let module_wat = r#"
     (module
-        (func $init (export "init") (param i64) (result i64)
+        (func $popcnt (export "popcnt") (param i64) (result i64)
             local.get 0
             i64.popcnt
         )
@@ -58,11 +58,11 @@ fn test_i64() {
     let module = Module::new(&store, &module_wat).unwrap();
     let instance = Instance::new(&module, &import_object).unwrap();
 
-    let init = instance.exports.get_function("init").unwrap();
+    let popcnt = instance.exports.get_function("popcnt").unwrap();
 
     let mut num = 1;
     for _ in 1..10000 {
-        let result = init.call(&[Value::I64(num)]).unwrap();
+        let result = popcnt.call(&[Value::I64(num)]).unwrap();
         assert_eq!(&Value::I64(num.count_ones() as i64), result.get(0).unwrap());
         num = get_next_number_i64(num);
     }
