@@ -1,69 +1,69 @@
-#[cfg(test)]
-mod mod_test {
-    extern crate libc;
-    extern crate nix;
-    extern crate wasmer;
+// These tests must stuck in a loop on M1 apple processor and singlepass compiler.
 
-    use self::libc::{c_void, siginfo_t};
-    use self::nix::sys::signal::{self, SigHandler};
-    use self::wasmer::{imports, Instance, Module};
+#[test]
+fn test_i32() {
+    use wasmer::{Store, Module, Instance, imports, Value};
 
-    static mut MEM: *mut c_void = core::ptr::null_mut();
-    static mut MEM_SIZE: usize = 0;
-    static mut OLD_SIGHANDLER: Option<SigHandler> = None;
+    let get_next_number_i32 = |mut num: i32| {
+        num ^= num << 13;
+        num ^= num >> 17;
+        num ^= num << 5;
+        num
+    };
 
-    extern "C" fn handle_sigsegv(x: i32, y: *mut siginfo_t, z: *mut c_void) {
-        unsafe {
-            println!("!!! receive signal : {}", x);
-            let mem = (*y).si_addr();
-            println!("mem = {:?}", mem);
-            let ps = page_size::get();
-            if mem >= MEM && (mem as usize - MEM as usize) < MEM_SIZE {
-                if libc::mprotect(MEM, ps, libc::PROT_WRITE) != 0 {
-                    panic!("mprotect cannot allows write access");
-                }
-            } else if let Some(old_handler) = OLD_SIGHANDLER {
-                match old_handler {
-                    SigHandler::SigDfl | SigHandler::SigIgn => panic!("unsupported"),
-                    SigHandler::Handler(func) => func(x),
-                    SigHandler::SigAction(func) => func(x, y, z),
-                }
-            }
-        }
+    let module_wat = r#"
+    (module
+        (func $init (export "init") (param i32) (result i32)
+            local.get 0
+            i32.popcnt
+        )
+    )"#;
+
+    let store = Store::default();
+    let import_object = imports! {};
+    let module = Module::new(&store, &module_wat).unwrap();
+    let instance = Instance::new(&module, &import_object).unwrap();
+
+    let init = instance.exports.get_function("init").unwrap();
+
+    let mut num = 1;
+    for _ in 1..10000 {
+        let result = init.call(&[Value::I32(num)]).unwrap();
+        assert_eq!(&Value::I32(num.count_ones() as i32), result.get(0).unwrap());
+        num = get_next_number_i32(num);
     }
+}
 
-    #[test]
-    fn test() {
-        let compiler = wasmer::Singlepass::default();
-        let store = wasmer::Store::new(&wasmer::Universal::new(compiler).engine());
+#[test]
+fn test_i64() {
+    use wasmer::{Store, Module, Instance, imports, Value};
 
-        unsafe {
-            let sig = if cfg!(target_os = "macos") {
-                signal::SIGBUS
-            } else {
-                signal::SIGSEGV
-            };
-            let handler = signal::SigHandler::SigAction(handle_sigsegv);
-            let sig_action = signal::SigAction::new(
-                handler,
-                signal::SaFlags::SA_SIGINFO,
-                signal::SigSet::empty(),
-            );
-            OLD_SIGHANDLER.replace(
-                signal::sigaction(sig, &sig_action)
-                    .expect("Cannot set sigaction")
-                    .handler(),
-            );
-        }
+    let get_next_number_i64 = |mut num: i64| {
+        num ^= num << 34;
+        num ^= num >> 40;
+        num ^= num << 7;
+        num
+    };
 
-        let wat = r#"(module (func call 0) (export "init" (func 0)))"#;
+    let module_wat = r#"
+    (module
+        (func $init (export "init") (param i64) (result i64)
+            local.get 0
+            i64.popcnt
+        )
+    )"#;
 
-        let module = Module::new(&store, wat).unwrap();
-        let import_object = imports! {};
-        let instance = Instance::new(&module, &import_object).unwrap();
+    let store = Store::default();
+    let import_object = imports! {};
+    let module = Module::new(&store, &module_wat).unwrap();
+    let instance = Instance::new(&module, &import_object).unwrap();
 
-        let init = instance.exports.get_function("init").unwrap();
-        let result = init.call(&[]);
-        println!("{:?}", result);
+    let init = instance.exports.get_function("init").unwrap();
+
+    let mut num = 1;
+    for _ in 1..10000 {
+        let result = init.call(&[Value::I64(num)]).unwrap();
+        assert_eq!(&Value::I64(num.count_ones() as i64), result.get(0).unwrap());
+        num = get_next_number_i64(num);
     }
 }
