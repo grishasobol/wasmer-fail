@@ -67,3 +67,42 @@ fn test_i64() {
         num = get_next_number_i64(num);
     }
 }
+
+#[test]
+fn test1() {
+    use wasmer::{Store, Module, Instance, imports, Value};
+    let module_wat = r#"
+    (module
+        (func (export "lol") (param i32) (result i32)
+            i32.const 0xDEADBEEF
+            i32.ctz
+            (block
+                (block
+                    (block
+                        br 1
+                        i32.const 0xdeadbaaf
+            i32.ctz
+                        drop
+                    )
+                    i32.const 0xdeadbaac
+            i32.ctz
+                    drop
+                )
+                i32.const 0xdeadfaaf
+            i32.ctz
+                drop
+            )
+            drop
+            i32.const 0xDEADBEEF
+            i32.ctz
+        )
+    )"#;
+
+    let store = Store::default();
+    let import_object = imports! {};
+    let module = Module::new(&store, &module_wat).unwrap();
+    let instance = Instance::new(&module, &import_object).unwrap();
+
+    let lol = instance.exports.get_function("lol").unwrap();
+    println!("{:?}", lol.call(&[Value::I32(10)]));
+}
