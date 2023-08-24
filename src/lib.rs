@@ -1,8 +1,8 @@
 // These tests must stuck in a loop on M1 apple processor and singlepass compiler.
 
 #[test]
-fn test_i32() {
-    use wasmer::{Store, Module, Instance, imports, Value};
+fn test_popcnt_i32() {
+    use wasmer::{imports, Instance, Module, Store, Value};
 
     let get_next_number_i32 = |mut num: i32| {
         num ^= num << 13;
@@ -35,8 +35,8 @@ fn test_i32() {
 }
 
 #[test]
-fn test_i64() {
-    use wasmer::{Store, Module, Instance, imports, Value};
+fn test_popcnt_i64() {
+    use wasmer::{imports, Instance, Module, Store, Value};
 
     let get_next_number_i64 = |mut num: i64| {
         num ^= num << 34;
@@ -69,8 +69,8 @@ fn test_i64() {
 }
 
 #[test]
-fn test1() {
-    use wasmer::{Store, Module, Instance, imports, Value};
+fn test_ctz() {
+    use wasmer::{imports, Instance, Module, Store, Value};
     let module_wat = r#"
     (module
         (func (export "lol") (param i32) (result i32)
@@ -81,15 +81,15 @@ fn test1() {
                     (block
                         br 1
                         i32.const 0xdeadbaaf
-            i32.ctz
+                        i32.ctz
                         drop
                     )
                     i32.const 0xdeadbaac
-            i32.ctz
+                    i32.ctz
                     drop
                 )
                 i32.const 0xdeadfaaf
-            i32.ctz
+                i32.ctz
                 drop
             )
             drop
@@ -105,4 +105,97 @@ fn test1() {
 
     let lol = instance.exports.get_function("lol").unwrap();
     println!("{:?}", lol.call(&[Value::I32(10)]));
+}
+
+#[test]
+fn check_wasm_execution_stack() {
+    use wasmer::{imports, Instance, Module, Store, Value};
+    let module_wat = r#"
+    (module
+        (func (export "lol") (param i64) (result i64)
+            global.get 0
+            local.get 0
+            i64.add
+            global.set 0
+            (call 0 (local.get 0))
+            drop
+            global.get 0
+        )
+        (global (mut i64) (i64.const 1))
+        (export "global" (global 0))
+    )
+    "#;
+
+    let store = Store::default();
+    let import_object = imports! {};
+    let module = Module::new(&store, &module_wat).unwrap();
+    let instance = Instance::new(&module, &import_object).unwrap();
+
+    let lol = instance.exports.get_function("lol").unwrap();
+    println!("{:?}", lol.call(&[Value::I64(1)]));
+    println!("{:?}", instance.exports.get_global("global"));
+}
+
+#[test]
+fn check_wasm_execution_stack1() {
+    use wasmer::{imports, Function, Instance, Module, Store, Value};
+    let module_wat = r#"
+    (module
+        (import "env" "add" (func $add (param i64 i64) (result i64)))
+        (func (export "lol") (param i64) (result i64)
+            (call 0 (global.get 0) (local.get 0))
+            (call 0 (global.get 0))
+            (call 0 (global.get 0))
+            (call 0 (global.get 0))
+            global.set 0
+            (call 1 (local.get 0))
+        )
+        (global (mut i64) (i64.const 1))
+        (export "global" (global 0))
+    )
+    "#;
+
+    let store = Store::default();
+    let add = |x: i64, y: i64| x + y;
+    let import_object = imports! {
+        "env" => {
+            "add" => Function::new_native(&store, add)
+        },
+    };
+    let module = Module::new(&store, &module_wat).unwrap();
+    let instance = Instance::new(&module, &import_object).unwrap();
+
+    let lol = instance.exports.get_function("lol").unwrap();
+    println!("{:?}", lol.call(&[Value::I64(1)]));
+    println!("{:?}", instance.exports.get_global("global"));
+}
+
+#[test]
+fn check_wasm_execution_stack2() {
+    use wasmer::{imports, Function, Instance, Memory, MemoryType, Module, Store, Val};
+
+    let wat = std::fs::read("code.wat").unwrap();
+
+    let store = Store::default();
+    let import_object = imports! {
+        "env" => {
+            "memory" => Memory::new(&store, MemoryType::new(261, None, false)).unwrap(),
+            "gr_reply_push_input" => Function::new_native(&store, |_x: i32, _y: i32, _z: i32| {}),
+            "gr_debug" => Function::new_native(&store, |_x: i32, _y: i32| {}),
+            "gr_out_of_gas" => Function::new_native(&store, || { println!("Out of gas")}),
+        },
+    };
+    let module = Module::new(&store, &wat).unwrap();
+    let instance = Instance::new(&module, &import_object).unwrap();
+
+    instance
+        .exports
+        .get_global("gear_gas")
+        .unwrap()
+        .set(Val::I64(250_000_000_000))
+        .unwrap();
+
+    let init = instance.exports.get_function("init").unwrap();
+    println!("{:?}", init.call(&[]));
+    println!("{:?}", instance.exports.get_global("gear_gas"));
 }
