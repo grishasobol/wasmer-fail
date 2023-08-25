@@ -179,7 +179,7 @@ fn check_wasm_execution_stack2() {
     let mut store = Store::default();
     let import_object = imports! {
         "env" => {
-            "import" => Function::new_typed(&mut store, || {}),
+            "import" => Function::new_typed(&mut store, |_x: i32, _y: i32, _z: i32| {}),
         },
     };
     let module = Module::new(&store, &wat).unwrap();
