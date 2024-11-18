@@ -170,22 +170,44 @@
 //     println!("{:?}", instance.exports.get_global("global"));
 // }
 
-#[test]
-fn check_wasm_execution_stack2() {
-    use wasmer::{imports, Function, Instance, Module, Store};
+// #[test]
+// fn check_wasm_execution_stack2() {
+//     use wasmer::{imports, Function, Instance, Module, Store};
 
-    let wat = std::fs::read("code.wat").unwrap();
+//     let wat = std::fs::read("code.wat").unwrap();
+
+//     let mut store = Store::default();
+//     let import_object = imports! {
+//         "env" => {
+//             "import" => Function::new_typed(&mut store, |_x: i32, _y: i32, _z: i32| {}),
+//         },
+//     };
+//     let module = Module::new(&store, &wat).unwrap();
+//     let instance = Instance::new(&mut store, &module, &import_object).unwrap();
+
+//     let init = instance.exports.get_function("init").unwrap();
+//     println!("{:?}", init.call(&mut store, &[]));
+//     println!("{:?}", instance.exports.get_global("gas").unwrap().get(&mut store));
+// }
+
+#[test]
+fn check_unreachable() {
+    use wasmer::{imports, Instance, Module, Store};
+    let module_wat = r#"
+    (module
+        (func (export "func")
+            i32.const 10
+            i32.const 20
+            i32.add
+            drop
+        )
+    )"#;
 
     let mut store = Store::default();
-    let import_object = imports! {
-        "env" => {
-            "import" => Function::new_typed(&mut store, |_x: i32, _y: i32, _z: i32| {}),
-        },
-    };
-    let module = Module::new(&store, &wat).unwrap();
+    let import_object = imports! {};
+    let module = Module::new(&store, &module_wat).unwrap();
     let instance = Instance::new(&mut store, &module, &import_object).unwrap();
 
-    let init = instance.exports.get_function("init").unwrap();
-    println!("{:?}", init.call(&mut store, &[]));
-    println!("{:?}", instance.exports.get_global("gas").unwrap().get(&mut store));
+    let lol = instance.exports.get_function("func").unwrap();
+    println!("{:?}", lol.call(&mut store, &[]));
 }

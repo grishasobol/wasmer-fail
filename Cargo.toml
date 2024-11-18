@@ -9,4 +9,4 @@ lto = "fat"
 codegen-units = 1
 
 [dependencies]
-wasmer = { version = "4", default-features = false, features = ["singlepass", "wat", "sys"] }
+wasmer = { version = "5", default-features = false, features = ["singlepass", "wat"] }
