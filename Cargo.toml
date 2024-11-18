@@ -3,10 +3,5 @@ name = "wasmer-fail"
 version = "0.0.1"
 edition = "2021"
 
-[profile.production]
-inherits = "release"
-lto = "fat"
-codegen-units = 1
-
 [dependencies]
 wasmer = { version = "5", default-features = false, features = ["singlepass", "wat"] }
